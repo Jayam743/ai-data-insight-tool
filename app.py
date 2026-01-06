@@ -1,5 +1,9 @@
 import streamlit as st
-from utils.analysis import load_csv, detect_column_types
+from utils.analysis import (
+    load_csv,
+    detect_column_types,
+    compute_descriptive_stats,
+)
 
 # Page title
 st.title("AI-Powered Data Insight Tool")
@@ -29,6 +33,12 @@ if uploaded_file is not None:
     st.dataframe(df.head())
 
     numeric_cols, categorical_cols = detect_column_types(df)
+
+    stats_df = compute_descriptive_stats(df, numeric_cols)
+
+    st.subheader("Descriptive statistics")
+    st.dataframe(stats_df)
+
 
     st.subheader("Detected column types")
     st.write("Numeric columns:", numeric_cols)
