@@ -23,3 +23,36 @@ def compute_descriptive_stats(df: pd.DataFrame, numeric_cols: list[str]) -> pd.D
     """
     stats = df[numeric_cols].agg(["mean", "min", "max"])
     return stats
+
+def revenue_by_category(df: pd.DataFrame, category_col: str, value_col: str) -> pd.DataFrame:
+    """
+    Aggregate revenue by a categorical column.
+    Returns a DataFrame sorted by total revenue.
+    """
+    grouped = (
+        df.groupby(category_col)[value_col]
+        .sum()
+        .sort_values(ascending=False)
+        .reset_index()
+    )
+    return grouped
+
+def missing_value_summary(df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Return a DataFrame summarizing missing values per column,
+    including count and percentage.
+    """
+    missing_count = df.isna().sum()
+    missing_percent = (missing_count / len(df) * 100).round(2)
+
+    summary = pd.DataFrame(
+        {
+            "missing_count": missing_count,
+            "missing_percent": missing_percent,
+        }
+    )
+
+    summary = summary[summary["missing_count"] > 0]
+    summary = summary.sort_values("missing_count", ascending=False)
+
+    return summary
