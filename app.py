@@ -1,4 +1,5 @@
 import streamlit as st
+from utils.analysis import load_csv, detect_column_types
 
 # Page title
 st.title("AI-Powered Data Insight Tool")
@@ -19,10 +20,16 @@ if uploaded_file is not None:
     import pandas as pd
 
     # Read CSV into DataFrame
-    df = pd.read_csv(uploaded_file)
+    df = load_csv(uploaded_file)
 
     st.success("File uploaded and read successfully!")
 
     # Show first 5 rows
     st.subheader("Preview of the data")
     st.dataframe(df.head())
+
+    numeric_cols, categorical_cols = detect_column_types(df)
+
+    st.subheader("Detected column types")
+    st.write("Numeric columns:", numeric_cols)
+    st.write("Categorical columns:", categorical_cols)
