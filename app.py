@@ -9,6 +9,9 @@ from utils.analysis import (
     compute_descriptive_stats,
     missing_value_summary,
     revenue_by_category,
+    top_categories_by_metric,
+    bottom_categories_by_metric,
+    outlier_summary,
 )
 
 # NOTE: We are not using AI right now (quota/billing). Keep this import commented until the end.
@@ -60,83 +63,115 @@ if uploaded_file is not None:
     else:
         st.dataframe(missing_df)
 
-    # =========================
-    # LAYER 2: VISUALIZATIONS
-    # =========================
-    st.subheader("Distribution (Histogram)")
+    st.subheader("Visualizations")
 
-    if len(numeric_cols) == 0:
-        st.info("No numeric columns found to plot a histogram.")
-    else:
-        col = st.selectbox("Choose a numeric column", numeric_cols, key="hist_col")
-        fig, ax = plt.subplots()
-        ax.hist(df[col].dropna(), bins=20)
-        ax.set_xlabel(col)
-        ax.set_ylabel("Count")
-        ax.set_title(f"Distribution of {col}")
-        st.pyplot(fig)
+    chart_type = st.selectbox(
+        "Choose a chart to view",
+        [
+            "Histogram",
+            "Box Plot",
+            "Scatter Plot",
+            "Correlation Heatmap",
+        ],
+        key="chart_type",
+    )
 
-    st.subheader("Outlier Detection (Box Plot)")
+    # 1) Histogram
+    if chart_type == "Histogram":
+        if len(numeric_cols) == 0:
+            st.info("No numeric columns found to plot a histogram.")
+        else:
+            col = st.selectbox("Choose a numeric column", numeric_cols, key="hist_col")
+            fig, ax = plt.subplots()
+            ax.hist(df[col].dropna(), bins=20)
+            ax.set_xlabel(col)
+            ax.set_ylabel("Count")
+            ax.set_title(f"Distribution of {col}")
+            st.pyplot(fig)
 
-    if len(numeric_cols) == 0:
-        st.info("No numeric columns found.")
-    else:
-        box_col = st.selectbox(
-            "Choose a numeric column for box plot",
-            numeric_cols,
-            key="box_col"
-        )
+    # 2) Box Plot
+    elif chart_type == "Box Plot":
+        if len(numeric_cols) == 0:
+            st.info("No numeric columns found to plot a box plot.")
+        else:
+            col = st.selectbox("Choose a numeric column", numeric_cols, key="box_col")
+            fig, ax = plt.subplots()
+            ax.boxplot(df[col].dropna(), vert=False)
+            ax.set_xlabel(col)
+            ax.set_title(f"Box Plot of {col}")
+            st.pyplot(fig)
 
-        fig, ax = plt.subplots()
-        ax.boxplot(df[box_col].dropna(), vert=False)
-        ax.set_xlabel(box_col)
-        ax.set_title(f"Box Plot of {box_col}")
-        st.pyplot(fig)
+    # 3) Scatter Plot
+    elif chart_type == "Scatter Plot":
+        if len(numeric_cols) < 2:
+            st.info("Need at least two numeric columns for a scatter plot.")
+        else:
+            x_col = st.selectbox("X-axis", numeric_cols, key="scatter_x")
+            y_col = st.selectbox("Y-axis", numeric_cols, key="scatter_y")
+            fig, ax = plt.subplots()
+            ax.scatter(df[x_col], df[y_col])
+            ax.set_xlabel(x_col)
+            ax.set_ylabel(y_col)
+            ax.set_title(f"{y_col} vs {x_col}")
+            st.pyplot(fig)
 
-    st.subheader("Relationship Between Numeric Columns (Scatter Plot)")
+    # 4) Correlation Heatmap
+    elif chart_type == "Correlation Heatmap":
+        if len(numeric_cols) < 2:
+            st.info("Need at least two numeric columns for correlation heatmap.")
+        else:
+            corr = df[numeric_cols].corr()
+            fig, ax = plt.subplots()
+            sns.heatmap(corr, annot=True, ax=ax)
+            ax.set_title("Correlation Heatmap")
+            st.pyplot(fig)
 
-    if len(numeric_cols) < 2:
-        st.info("Need at least two numeric columns.")
-    else:
-        x_col = st.selectbox("X-axis", numeric_cols, key="scatter_x")
-        y_col = st.selectbox("Y-axis", numeric_cols, key="scatter_y")
+    st.subheader("Insights")
 
-        fig, ax = plt.subplots()
-        ax.scatter(df[x_col], df[y_col])
-        ax.set_xlabel(x_col)
-        ax.set_ylabel(y_col)
-        ax.set_title(f"{y_col} vs {x_col}")
-        st.pyplot(fig)
+    insight_type = st.selectbox(
+        "Choose an insight",
+        [
+            "Missing Values",
+            "Top Categories (by metric)",
+            "Bottom Categories (by metric)",
+            "Outlier Summary",
+        ],
+        key="insight_type",
+    )
 
-    st.subheader("Correlation Heatmap")
+    # Missing Values
+    if insight_type == "Missing Values":
+        if missing_df.empty:
+            st.success("No missing values found 🎉")
+        else:
+            st.dataframe(missing_df)
 
-    if len(numeric_cols) < 2:
-        st.info("Need at least two numeric columns for correlation.")
-    else:
-        corr = df[numeric_cols].corr()
+    # Top Categories
+    elif insight_type == "Top Categories (by metric)":
+        if len(categorical_cols) == 0 or len(numeric_cols) == 0:
+            st.info("Need at least one categorical and one numeric column.")
+        else:
+            cat = st.selectbox("Category column", categorical_cols, key="top_cat")
+            metric = st.selectbox("Metric column", numeric_cols, key="top_metric")
+            n = st.slider("How many?", min_value=3, max_value=15, value=5, key="top_n")
+            top_df = top_categories_by_metric(df, cat, metric, top_n=n)
+            st.dataframe(top_df)
 
-        fig, ax = plt.subplots()
-        sns.heatmap(
-            corr,
-            annot=True,
-            cmap="coolwarm",
-            ax=ax
-        )
-        ax.set_title("Correlation Between Numeric Features")
-        st.pyplot(fig)
+    # Bottom Categories
+    elif insight_type == "Bottom Categories (by metric)":
+        if len(categorical_cols) == 0 or len(numeric_cols) == 0:
+            st.info("Need at least one categorical and one numeric column.")
+        else:
+            cat = st.selectbox("Category column", categorical_cols, key="bottom_cat")
+            metric = st.selectbox("Metric column", numeric_cols, key="bottom_metric")
+            n = st.slider("How many?", min_value=3, max_value=15, value=5, key="bottom_n")
+            bottom_df = bottom_categories_by_metric(df, cat, metric, bottom_n=n)
+            st.dataframe(bottom_df)
 
-    # -------------------------
-    # AI SUMMARY (later)
-    # -------------------------
-    # st.subheader("AI Summary")
-    # if st.button("Generate AI Summary"):
-    #     with st.spinner("Generating summary..."):
-    #         dataset_shape = (df.shape[0], df.shape[1])
-    #         summary_text = generate_summary(
-    #             dataset_shape=dataset_shape,
-    #             numeric_cols=numeric_cols,
-    #             categorical_cols=categorical_cols,
-    #             descriptive_stats=stats_df.to_string() if len(numeric_cols) else "",
-    #             missing_summary=missing_df.to_string() if not missing_df.empty else "",
-    #         )
-    #     st.write(summary_text)
+    # Outlier Summary
+    elif insight_type == "Outlier Summary":
+        if len(numeric_cols) == 0:
+            st.info("No numeric columns available for outlier detection.")
+        else:
+            out_df = outlier_summary(df, numeric_cols)
+            st.dataframe(out_df)
